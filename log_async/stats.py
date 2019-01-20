@@ -41,20 +41,6 @@ class StatsCollector(object):
         return [v.val() for v in self._all]
 
 
-class TransportStats(StatsCollector):
-    def __init__(self, prefix):
-        super(TransportStats, self).__init__(prefix)
-        self._bytes_sent = Counter(prefix + "sent_bytes", "events received")
-        self._errors = Counter(prefix + "errors_total", "socket disconnects")
-        self._all.extend([self._bytes_sent, self._errors])
-
-    def socket_error(self):
-        self._errors.inc(1)
-
-    def bytes_sent(self, n):
-        self._bytes_sent.inc(n)
-
-
 class LogStats(StatsCollector):
 
     def __init__(self, prefix):
@@ -79,33 +65,6 @@ class LogStats(StatsCollector):
 
     def unbuffer(self, n=1):
         self._buffered.dec(min(self._buffered.val()[1], n))
-
-
-class DatabaseStats(LogStats):
-
-    def __init__(self, prefix):
-        super(DatabaseStats, self).__init__(prefix)
-        self._fsize = Gauge(prefix + "file_bytes", "size of sqlite file")
-        self._lock_errors = Counter(prefix + "lock_errors_total",
-                                    "number of database lock conflicts encountered")
-        self._all.extend([self._fsize, self._lock_errors])
-
-    def set_file_size(self, nbytes):
-        self._fsize.set(nbytes)
-
-    def lock_error(self):
-        self._lock_errors.inc(1)
-
-
-class WorkerStats(LogStats):
-
-    def __init__(self, prefix):
-        super(WorkerStats, self).__init__(prefix)
-        self._queue = Gauge(prefix + "queue_size", "events in queue to process")
-        self._all.extend([self._queue, ])
-
-    def set_queue_size(self, val):
-        self._queue.set(val)
 
 
 # lookup - finds stat with s in the name. s should be lower case. Used for testing

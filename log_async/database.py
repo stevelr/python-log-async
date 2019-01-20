@@ -12,7 +12,7 @@ import six
 
 from .cache import Cache
 from .constants import constants
-from .stats import DatabaseStats
+from .stats import Counter, Gauge, LogStats
 from .utils import ichunked
 
 
@@ -27,6 +27,22 @@ DATABASE_SCHEMA_STATEMENTS = [
     '''CREATE INDEX IF NOT EXISTS `idx_pending_delete` ON `event` (pending_delete);''',
     '''CREATE INDEX IF NOT EXISTS `idx_entry_date` ON `event` (entry_date);''',
 ]
+
+
+class DatabaseStats(LogStats):
+
+    def __init__(self, prefix):
+        super(DatabaseStats, self).__init__(prefix)
+        self._fsize = Gauge(prefix + "file_bytes", "size of sqlite file")
+        self._lock_errors = Counter(prefix + "lock_errors_total",
+                                    "number of database lock conflicts encountered")
+        self._all.extend([self._fsize, self._lock_errors])
+
+    def set_file_size(self, nbytes):
+        self._fsize.set(nbytes)
+
+    def lock_error(self):
+        self._lock_errors.inc(1)
 
 
 class DatabaseLockedError(Exception):

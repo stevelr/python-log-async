@@ -15,8 +15,19 @@ from six.moves.queue import Empty, Queue
 
 from .constants import constants
 from .database import DatabaseLockedError
-from .stats import WorkerStats
+from .stats import Gauge, LogStats
 from .utils import safe_log_via_print
+
+
+class WorkerStats(LogStats):
+
+    def __init__(self, prefix):
+        super(WorkerStats, self).__init__(prefix)
+        self._queue = Gauge(prefix + "queue_size", "events in queue to process")
+        self._all.extend([self._queue, ])
+
+    def set_queue_size(self, val):
+        self._queue.set(val)
 
 
 class ProcessingError(Exception):
@@ -249,7 +260,6 @@ class LogProcessingWorker(Thread):
     # ----------------------------------------------------------------------
     def _send_events(self, events):
         self._transport.send(events)
-        self._stats.sent(len(events))
 
     # ----------------------------------------------------------------------
     def _log_general_error(self, exc):

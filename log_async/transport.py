@@ -8,7 +8,25 @@ import ssl
 import sys
 
 from log_async.constants import constants
-from log_async.stats import TransportStats
+from log_async.stats import Counter, StatsCollector
+
+
+class TransportStats(StatsCollector):
+    def __init__(self, prefix):
+        super(TransportStats, self).__init__(prefix)
+        self._bytes_sent = Counter(prefix + "sent_bytes", "bytes transmitted")
+        self._events_sent = Counter(prefix + "sent_msgs", "events transmitted")
+        self._errors = Counter(prefix + "errors_total", "socket disconnects")
+        self._all.extend([self._bytes_sent, self._events_sent, self._errors])
+
+    def socket_error(self):
+        self._errors.inc(1)
+
+    def bytes_sent(self, n):
+        self._bytes_sent.inc(n)
+
+    def events_sent(self, n):
+        self._events_sent.inc(n)
 
 
 class UdpTransport(object):
@@ -30,8 +48,10 @@ class UdpTransport(object):
         self._create_socket()
         try:
             self._send(events)
+            self._stats.events_sent(len(events))
         except Exception:
             self._stats.socket_error()
+            raise
         finally:
             self._close()
 
